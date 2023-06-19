@@ -1,36 +1,31 @@
 import { FlatList, SafeAreaView, Text } from "react-native";
 import { useEffect, useState } from 'react';
-import { BankObjectType } from '../../src/types/BankObject.type';
-import database from '../../src/database/DatabaseInstance';
+import { BankObjectType } from '../../types/BankObject.type';
+import database from '../../database/DatabaseInstance';
 import ListItem from "./ListItem";
-import { SQLTransaction, SQLResultSet } from 'expo-sqlite'
+import { SQLTransaction } from 'expo-sqlite'
+import { ListContainerStyles } from "./Styles";
+import { getAllBanksInfoFromDB, insertBankInfoIntoDB } from "../../database/DatabaseActions";
+
 
 export default function List() {
-    const [banksData, setBanksData] = useState<BankObjectType[]>([])
+    const [banksData, setBanksData] = useState<BankObjectType[] | []>([])
     const [isDatabaseFetched, setIsDatabaseFetched] = useState<boolean>(false)
 
-    const fetchDatabase = (): void => {
-        database.transaction((txn: SQLTransaction) => {
-            txn.executeSql(
-                'SELECT * FROM banks_info',
-                [],
-                (_: SQLTransaction, resultSet: SQLResultSet) => {
-                    const data = resultSet.rows._array;
-                    setBanksData(data);
-                    setIsDatabaseFetched(true)
-                },
-                () => {
-                    setBanksData([])
-                    setIsDatabaseFetched(true)
-                    return true
-                },
-            );
-        });
+    const fetchDatabase = async (): Promise<void> => {
+        getAllBanksInfoFromDB()
+            .then(
+                databaseResponse => setBanksData(databaseResponse)
+            ).catch(
+                error => setBanksData(error)
+            ).finally(
+                () => setIsDatabaseFetched(true)
+            )
     }
 
     const fetchBanksInfo = async (): Promise<void> => {
         try {
-            const banksInfo: BankObjectType[] = await global.fetch(
+            const banksInfo: BankObjectType[] | [] = await global.fetch(
                 'https://dev.obtenmas.com/catom/api/challenge/banks'
             ).then(
                 response => {
@@ -45,17 +40,14 @@ export default function List() {
                 tx.executeSql(
                     'CREATE TABLE IF NOT EXISTS banks_info (id INTEGER PRIMARY KEY AUTOINCREMENT, bankName TEXT, description TEXT, age TEXT, url TEXT)',
                     [],
-                    () => {
+                    async () => {
                         for (const item of banksInfo) {
-                            tx.executeSql(
-                                'INSERT INTO banks_info (bankName, description, age, url) VALUES (?, ?, ?, ?)',
-                                [item.bankName, item.description, item.age, item.url],
-                                () => console.log('Successful registration'),
-                                (error: SQLTransaction) => {
-                                    console.error('Error during registration:', error)
-                                    return true
-                                }
-                            );
+                            insertBankInfoIntoDB(item)
+                                .then(
+                                    databaseResponse => console.log(databaseResponse)
+                                ).catch(
+                                    error => console.error(error)
+                                )
                         }
                     },
                     (error: SQLTransaction) => {
@@ -92,7 +84,9 @@ export default function List() {
                     <ListItem item={item} />
                 )}
                 ListEmptyComponent={<Text>Ha ocurrido un error</Text>}
+                style={ListContainerStyles.container}
             />
         </SafeAreaView>
+
     )
 }

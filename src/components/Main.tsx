@@ -1,26 +1,18 @@
 import { StatusBar } from 'expo-status-bar';
-import Constants from 'expo-constants'
+import { MainStyles } from './Styles';
+
 import {
-    StyleSheet,
     View,
 } from 'react-native';
-import List from './List';
+import List from './List/List';
 
 export default function Main() {
     return (
-        <View style={styles.container}>
-            <List />
+        <View style={MainStyles.container}>
             <StatusBar style="auto" />
+            <List />
         </View>
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        marginTop: Constants.statusBarHeight,
-        backgroundColor: '#fff',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 10,
-    },
-});
+
